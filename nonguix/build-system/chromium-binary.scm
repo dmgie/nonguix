@@ -83,7 +83,7 @@
       ("expat" ,expat)
       ("fontconfig" ,fontconfig)
       ("freetype" ,freetype)
-      ("gcc:lib" ,gcc "lib")
+      ("gcc:lib" ,gcc-13 "lib")
       ("glib" ,glib)
       ("gtk+" ,gtk+)
       ("libdrm" ,libdrm)
