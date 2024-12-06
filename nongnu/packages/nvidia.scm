@@ -443,9 +443,9 @@ mainly used as a dependency of other packages.  For user-facing purpose, use
   (package
     (inherit nvidia-driver)
     (name "nvidia-driver-beta")
-    (version "565.57.01")
+    (version "565.77")
     (source (nvidia-source
-             version "0yic33xx1b3jbgciphlwh6zqfj21vx9439zm0j45wf2yb17fksvf"))
+             version "0z0lncf3q4ndf16k928vpjrzvc9xgg8h494qcvbk9kvbqi1afyha"))
     (arguments
      (substitute-keyword-arguments (package-arguments nvidia-driver)
        ((#:install-plan plan)

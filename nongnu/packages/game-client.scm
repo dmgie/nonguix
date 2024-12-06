@@ -227,7 +227,7 @@ implementation with gogdl and Amazon Games using Nile.")
 
 (define steam-nvidia-container-libs
   (modify-inputs steam-container-libs
-    (replace "mesa" nvda)))
+    (replace "mesa" nvdb)))
 
 (define heroic-extra-client-libs
   `(("curl" ,curl)                      ; Required for Heroic to download e.g. Wine.
