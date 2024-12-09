@@ -220,9 +220,9 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
 (define-public nvidia-driver
   (package
     (name "nvidia-driver")
-    (version "550.135")
+    (version "565.77")
     (source (nvidia-source
-             version "1ac8hy0rwk5dgfj28h7gj1mwm59189dsah91fq76j1a0ckslf80i"))
+             version "0z0lncf3q4ndf16k928vpjrzvc9xgg8h494qcvbk9kvbqi1afyha"))
     (build-system copy-build-system)
     (arguments
      (list #:modules '((guix build copy-build-system)
@@ -239,6 +239,7 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                 "lib/" #:include-regexp ("^./[^/]+\\.so"))
                ("." "share/nvidia/" #:include-regexp ("nvidia-application-profiles"))
                ("." "share/egl/egl_external_platform.d/" #:include-regexp ("(gbm|wayland)\\.json"))
+               ("nvidia_icd_vksc.json" "etc/vulkansc/icd.d/")
                ("10_nvidia.json" "share/glvnd/egl_vendor.d/")
                ("90-nvidia.rules" "lib/udev/rules.d/")
                ("nvidia-drm-outputclass.conf" "share/X11/xorg.conf.d/")
@@ -351,6 +352,19 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                       '("nvidia-cuda-mps-control"
                         "nvidia-cuda-mps-server"
                         "nvidia-smi")))))
+               (add-after 'create-misc-files 'create-misc-files-for-beta
+                 (lambda _
+                   ;; VulkanSC ICD configuration
+                   (substitute* "nvidia_icd_vksc.json"
+                     (("libnvidia-vksc-core\\.so\\.." all)
+                      (string-append #$output "/lib/" all)))))
+               (add-after 'install-commands 'install-commands-for-beta
+                 (lambda _
+                   (when (string-match
+                          "x86_64-linux"
+                          (or #$(%current-target-system) #$(%current-system)))
+                     (install-file "nvidia-pcc"
+                                   (string-append #$output "/bin")))))
                (add-before 'patch-elf 'relocate-libraries
                  (lambda _
                    (let* ((version #$(package-version this-package))
@@ -439,34 +453,6 @@ mainly used as a dependency of other packages.  For user-facing purpose, use
      (license:nonfree
       (format #f "file:///share/doc/nvidia-driver-~a/LICENSE" version)))))
 
-(define-public nvidia-driver-beta
-  (package
-    (inherit nvidia-driver)
-    (name "nvidia-driver-beta")
-    (version "565.77")
-    (source (nvidia-source
-             version "0z0lncf3q4ndf16k928vpjrzvc9xgg8h494qcvbk9kvbqi1afyha"))
-    (arguments
-     (substitute-keyword-arguments (package-arguments nvidia-driver)
-       ((#:install-plan plan)
-        #~(cons '("nvidia_icd_vksc.json" "etc/vulkansc/icd.d/")
-                #$plan))
-       ((#:phases phases)
-        #~(modify-phases #$phases
-            (add-after 'create-misc-files 'create-misc-files-for-beta
-              (lambda _
-                ;; VulkanSC ICD configuration
-                (substitute* "nvidia_icd_vksc.json"
-                  (("libnvidia-vksc-core\\.so\\.." all)
-                   (string-append #$output "/lib/" all)))))
-            (add-after 'install-commands 'install-commands-for-beta
-              (lambda _
-                (when (string-match
-                       "x86_64-linux"
-                       (or #$(%current-target-system) #$(%current-system)))
-                  (install-file "nvidia-pcc"
-                                (string-append #$output "/bin")))))))))))
-
 (define-public nvidia-libs
   (deprecated-package "nvidia-libs" nvidia-driver))
 
@@ -503,13 +489,6 @@ product.
 
 To enable GSP mode manually, add @code{\"NVreg_EnableGpuFirmware=1\"} to
 @code{kernel-arguments} field of the @code{operating-system} configuration."))))
-
-(define-public nvidia-firmware-beta
-  (package
-    (inherit nvidia-firmware)
-    (name "nvidia-firmware-beta")
-    (version (package-version nvidia-driver-beta))
-    (source (package-source nvidia-driver-beta))))
 
 
 ;;;
@@ -567,13 +546,6 @@ add @code{nvidia_drm.modeset=1} to @code{kernel-arguments} as well.")
      (license:nonfree
       (format #f "file:///share/doc/nvidia-driver-~a/LICENSE" version)))))
 
-(define-public nvidia-module-beta
-  (package
-    (inherit nvidia-module)
-    (name "nvidia-module-beta")
-    (version (package-version nvidia-driver-beta))
-    (source (package-source nvidia-driver-beta))))
-
 (define-public nvidia-module-open
   (let ((base nvidia-module))
     (package
@@ -603,14 +575,6 @@ If the NVIDIA card is not used for displaying, or on a Wayland environment,
 add @code{nvidia_drm.modeset=1} to @code{kernel-arguments} as well.")
       (license license-gnu:gpl2))))
 
-(define-public nvidia-module-open-beta
-  (package
-    (inherit nvidia-module-open)
-    (name "nvidia-module-open-beta")
-    (version (package-version nvidia-driver-beta))
-    (source (package-source nvidia-driver-beta))))
-
-
 ;;;
 ;;; ‘nvidia-settings’ packages
 ;;;
@@ -684,19 +648,6 @@ configuration, creating application profiles, gpu monitoring and more.")
     (home-page "https://github.com/NVIDIA/nvidia-settings")
     (license license-gnu:gpl2)))
 
-(define-public nvidia-settings-beta
-  (package
-    (inherit nvidia-settings)
-    (name "nvidia-settings-beta")
-    (version "565.57.01")
-    (source (nvidia-settings-source
-             name version
-             "006my5a69689wkzjcg3k1y35ifmizfyfj4n7f02naxhbgrxq9fqz"))
-    (inputs
-     (modify-inputs (package-inputs nvidia-settings)
-       (prepend vulkan-headers)))))
-
-
 ;;;
 ;;; ‘nvda’ packages
 ;;;
@@ -820,40 +771,10 @@ variables @code{__GLX_VENDOR_LIBRARY_NAME=nvidia} and
     (license (package-license nvidia-driver))
     (home-page (package-home-page nvidia-driver))))
 
-(define-public nvdb
-  (package
-    (inherit nvda)
-    (name "nvdb")
-    (version (string-pad-right
-              (package-version nvidia-driver-beta)
-              (string-length (package-version mesa-for-nvda))
-              #\0))
-    (arguments
-     (list #:modules '((guix build union))
-           #:builder
-           #~(begin
-               (use-modules (guix build union))
-               (union-build
-                #$output
-                '#$(list (this-package-input "libglvnd")
-                         (this-package-input "mesa")
-                         (this-package-input "nvidia-driver-beta"))))))
-    (propagated-inputs
-     (append
-      (package-propagated-inputs mesa-for-nvda)
-      (package-propagated-inputs nvidia-driver-beta)))
-    (inputs (list mesa-for-nvda nvidia-driver-beta))))
-
 (define mesa/fake
   (package
     (inherit mesa)
     (replacement nvda)))
-
-(define-public mesa/fake-beta
-  (hidden-package
-   (package
-     (inherit mesa)
-     (replacement nvdb))))
 
 (define-public replace-mesa
   (package-input-rewriting `((,mesa . ,mesa/fake))))
