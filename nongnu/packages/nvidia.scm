@@ -220,12 +220,12 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
 (define-public nvidia-driver
   (package
     (name "nvidia-driver")
-    (version "555.52.04")
-    (source (nvidia-source
-             version "00j4lhk6cddmb83fc5h5qz0m0l2djjxh4zgchrbyjapkprnswlwx"))
-    ; (version "565.57.01")
+    ; (version "555.52.04")
     ; (source (nvidia-source
-    ;          version "0yic33xx1b3jbgciphlwh6zqfj21vx9439zm0j45wf2yb17fksvf"))
+    ;          version "00j4lhk6cddmb83fc5h5qz0m0l2djjxh4zgchrbyjapkprnswlwx"))
+    (version "565.57.01")
+    (source (nvidia-source
+             version "0yic33xx1b3jbgciphlwh6zqfj21vx9439zm0j45wf2yb17fksvf"))
     (build-system copy-build-system)
     (arguments
      (list #:modules '((guix build copy-build-system)
@@ -241,8 +241,8 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                     (_ "."))
                 "lib/" #:include-regexp ("^./[^/]+\\.so"))
                ("." "share/nvidia/" #:include-regexp ("nvidia-application-profiles"))
-               ("." "share/egl/egl_external_platform.d/" #:include-regexp ("(gbm|wayland)\\.json"))
-               ; ("nvidia_icd_vksc.json" "etc/vulkansc/icd.d/")
+               ("." "share/egl/egl_external_platform.d/" #:include-regexp ("(gbm|wayland|xcb|xlib)\\.json"))
+               ("nvidia_icd_vksc.json" "etc/vulkansc/icd.d/")
                ("10_nvidia.json" "share/glvnd/egl_vendor.d/")
                ("90-nvidia.rules" "lib/udev/rules.d/")
                ("nvidia-drm-outputclass.conf" "share/X11/xorg.conf.d/")
@@ -265,6 +265,11 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                                   "15_nvidia_gbm.json")
                      (("libnvidia-egl-(wayland|gbm)\\.so\\.." all)
                       (search-input-file inputs (string-append "lib/" all))))
+
+                   (substitute* '("20_nvidia_xcb.json"
+                                  "20_nvidia_xlib.json")
+                     (("libnvidia-egl-(xcb|xlib)\\.so\\.." all)
+                      (string-append #$output "/lib/" all)))
 
                    ;; EGL vendor ICD configuration
                    (substitute* "10_nvidia.json"
@@ -305,6 +310,8 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                     '("/etc/OpenCL/vendors/nvidia.icd"
                       "/share/egl/egl_external_platform.d/10_nvidia_wayland.json"
                       "/share/egl/egl_external_platform.d/15_nvidia_gbm.json"
+                      "/share/egl/egl_external_platform.d/20_nvidia_xcb.json"
+                      "/share/egl/egl_external_platform.d/20_nvidia_xlib.json"
                       "/share/glvnd/egl_vendor.d/10_nvidia.json"
                       "/share/vulkan/icd.d/nvidia_icd.json"
                       "/share/vulkan/implicit_layer.d/nvidia_layers.json"))))
@@ -357,25 +364,27 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                       '("nvidia-cuda-mps-control"
                         "nvidia-cuda-mps-server"
                         "nvidia-smi")))))
-               ; (add-after 'create-misc-files 'create-misc-files-for-beta
-               ;   (lambda _
-               ;     ;; VulkanSC ICD configuration
-               ;     (substitute* "nvidia_icd_vksc.json"
-               ;       (("libnvidia-vksc-core\\.so\\.." all)
-               ;        (string-append #$output "/lib/" all)))))
-               ; (add-after 'install-commands 'install-commands-for-beta
-               ;   (lambda _
-               ;     (when (string-match
-               ;            "x86_64-linux"
-               ;            (or #$(%current-target-system) #$(%current-system)))
-               ;       (install-file "nvidia-pcc"
-               ;                     (string-append #$output "/bin")))))
+               (add-after 'create-misc-files 'create-misc-files-for-beta
+                 (lambda _
+                   ;; VulkanSC ICD configuration
+                   (substitute* "nvidia_icd_vksc.json"
+                     (("libnvidia-vksc-core\\.so\\.." all)
+                      (string-append #$output "/lib/" all)))))
+               (add-after 'install-commands 'install-commands-for-beta
+                 (lambda _
+                   (when (string-match
+                          "x86_64-linux"
+                          (or #$(%current-target-system) #$(%current-system)))
+                     (install-file "nvidia-pcc"
+                                   (string-append #$output "/bin")))))
                (add-before 'patch-elf 'relocate-libraries
                  (lambda _
                    (let* ((version #$(package-version this-package))
                           (libdir (string-append #$output "/lib"))
                           (gbmdir (string-append libdir "/gbm"))
                           (vdpaudir (string-append libdir "/vdpau"))
+                          (nvidiadir (string-append libdir "/nvidia"))
+                          (nvidiaxorgdir (string-append nvidiadir "/xorg"))
                           (xorgmoddir (string-append libdir "/xorg/modules"))
                           (xorgdrvdir (string-append xorgmoddir "/drivers"))
                           (xorgextdir (string-append xorgmoddir "/extensions"))
