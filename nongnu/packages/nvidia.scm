@@ -249,7 +249,9 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                ("nvidia-dbus.conf" "share/dbus-1/system.d/")
                ("nvidia.icd" "etc/OpenCL/vendors/")
                ("nvidia_icd.json" "share/vulkan/icd.d/")
-               ("nvidia_layers.json" "share/vulkan/implicit_layer.d/"))
+               ("nvidia_layers.json" "share/vulkan/implicit_layer.d/")
+               ("nvngx.dll" "lib/nvidia/wine/")
+               ("_nvngx.dll" "lib/nvidia/wine/"))
            #:phases
            #~(modify-phases %standard-phases
                (replace 'unpack
