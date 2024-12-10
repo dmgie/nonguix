@@ -220,9 +220,12 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
 (define-public nvidia-driver
   (package
     (name "nvidia-driver")
-    (version "565.77")
+    (version "555.52.04")
     (source (nvidia-source
-             version "0z0lncf3q4ndf16k928vpjrzvc9xgg8h494qcvbk9kvbqi1afyha"))
+             version "00j4lhk6cddmb83fc5h5qz0m0l2djjxh4zgchrbyjapkprnswlwx"))
+    ; (version "565.57.01")
+    ; (source (nvidia-source
+    ;          version "0yic33xx1b3jbgciphlwh6zqfj21vx9439zm0j45wf2yb17fksvf"))
     (build-system copy-build-system)
     (arguments
      (list #:modules '((guix build copy-build-system)
@@ -239,7 +242,7 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                 "lib/" #:include-regexp ("^./[^/]+\\.so"))
                ("." "share/nvidia/" #:include-regexp ("nvidia-application-profiles"))
                ("." "share/egl/egl_external_platform.d/" #:include-regexp ("(gbm|wayland)\\.json"))
-               ("nvidia_icd_vksc.json" "etc/vulkansc/icd.d/")
+               ; ("nvidia_icd_vksc.json" "etc/vulkansc/icd.d/")
                ("10_nvidia.json" "share/glvnd/egl_vendor.d/")
                ("90-nvidia.rules" "lib/udev/rules.d/")
                ("nvidia-drm-outputclass.conf" "share/X11/xorg.conf.d/")
@@ -352,19 +355,19 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                       '("nvidia-cuda-mps-control"
                         "nvidia-cuda-mps-server"
                         "nvidia-smi")))))
-               (add-after 'create-misc-files 'create-misc-files-for-beta
-                 (lambda _
-                   ;; VulkanSC ICD configuration
-                   (substitute* "nvidia_icd_vksc.json"
-                     (("libnvidia-vksc-core\\.so\\.." all)
-                      (string-append #$output "/lib/" all)))))
-               (add-after 'install-commands 'install-commands-for-beta
-                 (lambda _
-                   (when (string-match
-                          "x86_64-linux"
-                          (or #$(%current-target-system) #$(%current-system)))
-                     (install-file "nvidia-pcc"
-                                   (string-append #$output "/bin")))))
+               ; (add-after 'create-misc-files 'create-misc-files-for-beta
+               ;   (lambda _
+               ;     ;; VulkanSC ICD configuration
+               ;     (substitute* "nvidia_icd_vksc.json"
+               ;       (("libnvidia-vksc-core\\.so\\.." all)
+               ;        (string-append #$output "/lib/" all)))))
+               ; (add-after 'install-commands 'install-commands-for-beta
+               ;   (lambda _
+               ;     (when (string-match
+               ;            "x86_64-linux"
+               ;            (or #$(%current-target-system) #$(%current-system)))
+               ;       (install-file "nvidia-pcc"
+               ;                     (string-append #$output "/bin")))))
                (add-before 'patch-elf 'relocate-libraries
                  (lambda _
                    (let* ((version #$(package-version this-package))
@@ -439,6 +442,7 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
            libx11
            libxcb
            libxext
+           ; vulkan-headers
            mesa-for-nvda
            openssl
            openssl-1.1
