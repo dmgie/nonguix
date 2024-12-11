@@ -130,6 +130,29 @@ application-facing EGL functions.")
     (home-page "https://github.com/NVIDIA/eglexternalplatform")
     (license license-gnu:expat)))
 
+(define-public egl-gbm-for-nvda
+  (package
+    (name "egl-gbm")
+    (version "1.1.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/NVIDIA/egl-gbm")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1rfgfi06ry7c7hnzdm4b0dc8r3hmbfn2rd37z3mc4wn38sgz5l3a"))))
+    (build-system meson-build-system)
+    (native-inputs (list pkg-config))
+    (inputs (list eglexternalplatform mesa))
+    (synopsis "GBM EGL external platform library")
+    (description
+     "This package provides an EGL External Platform library implementation for
+GBM EGL support.")
+    (home-page "https://github.com/NVIDIA/egl-gbm")
+    (license license-gnu:expat)))
+
 (define-public egl-x11
   (package
     (name "egl-x11")
@@ -544,7 +567,7 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
     (supported-systems '("i686-linux" "x86_64-linux"))
     (native-inputs (list patchelf-0.16))
     (inputs
-     (list egl-gbm
+     (list egl-gbm-for-nvda
            egl-wayland-for-nvda
            egl-x11
            `(,gcc "lib")
