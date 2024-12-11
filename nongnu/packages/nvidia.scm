@@ -223,9 +223,12 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
     ; (version "555.52.04")
     ; (source (nvidia-source
     ;          version "00j4lhk6cddmb83fc5h5qz0m0l2djjxh4zgchrbyjapkprnswlwx"))
-    (version "565.57.01")
+    ; (version "565.57.01")
+    ; (source (nvidia-source
+    ;          version "0yic33xx1b3jbgciphlwh6zqfj21vx9439zm0j45wf2yb17fksvf"))
+    (version "565.77")
     (source (nvidia-source
-             version "0yic33xx1b3jbgciphlwh6zqfj21vx9439zm0j45wf2yb17fksvf"))
+             version "0z0lncf3q4ndf16k928vpjrzvc9xgg8h494qcvbk9kvbqi1afyha"))
     (build-system copy-build-system)
     (arguments
      (list #:modules '((guix build copy-build-system)
