@@ -22,6 +22,7 @@
   #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system python)
+  #:use-module (guix build-system meson)
   #:use-module (guix build-system trivial)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
@@ -71,6 +72,101 @@
 ;;; NVIDIA driver checkouts
 ;;;
 
+(define-public egl-wayland-for-nvda
+  (package
+    (name "egl-wayland")
+    (version "1.1.17")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/NVIDIA/egl-wayland")
+             (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1w0b53157ql5pp6hawqcy1c1c8lchk21gpc01p6lxgwvl3dgjn7y"))))
+    (build-system meson-build-system)
+    (native-inputs
+      (list libglvnd ;needed for headers
+            mesa-headers
+            pkg-config
+            pkg-config-for-build
+            wayland
+            wayland-protocols))
+    (inputs
+      (list mesa
+            wayland
+            wayland-protocols))
+    (propagated-inputs
+      (list eglexternalplatform))
+    (synopsis "EGLStream-based Wayland external platform")
+    (description "EGL-Wayland is an implementation of a EGL External Platform
+library to add client-side Wayland support to EGL on top of EGLDevice and
+EGLStream families of extensions.")
+    (home-page "https://github.com/NVIDIA/egl-wayland")
+    (license license-gnu:expat)))
+
+(define-public eglexternalplatform-for-nvda
+  (package
+    (name "eglexternalplatform")
+    (version "1.2")
+    (source
+     (origin
+       (method git-fetch)
+       (uri
+        (git-reference
+         (url "https://github.com/NVIDIA/eglexternalplatform")
+         (commit version)))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "1cq8j2ymjpxpdcwnmcj0h5fgi3i1l8hns3vgw10rigwljrmn8ixp"))))
+    (build-system meson-build-system)
+    (synopsis "EGL External Platform interface")
+    (description "EGLExternalPlatform is an specification of the EGL External
+Platform interface for writing EGL platforms and their interactions with modern
+window systems on top of existing low-level EGL platform implementations.  This
+keeps window system implementation specifics out of EGL drivers by using
+application-facing EGL functions.")
+    (home-page "https://github.com/NVIDIA/eglexternalplatform")
+    (license license-gnu:expat)))
+
+(define-public egl-x11
+  (package
+    (name "egl-x11")
+    (version "0.0.1")
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/NVIDIA/egl-x11")
+             (commit "c616565cb830a23ac69ddd3c78251711646a11a2")))
+       (file-name (git-file-name name version))
+       (sha256
+        (base32 "15zqzx061cpzcs0mxc7nnsv9rabfszfxxmwr5v7flxi4m9j6hshc"))))
+    (build-system meson-build-system)
+    (native-inputs
+      (list libglvnd ;needed for headers
+            mesa-headers
+            libxcb
+            libdrm
+            libx11
+            pkg-config
+            pkg-config-for-build
+            wayland
+            wayland-protocols))
+    (inputs
+      (list mesa
+            wayland
+            wayland-protocols))
+    (propagated-inputs
+      (list eglexternalplatform-for-nvda))
+    (synopsis "EGLStream-based Wayland external platform")
+    (description "EGL-Wayland is an implementation of a EGL External Platform
+library to add client-side Wayland support to EGL on top of EGLDevice and
+EGLStream families of extensions.")
+    (home-page "https://github.com/NVIDIA/egl-wayland")
+    (license license-gnu:expat)))
+
 (define nvidia-driver-snippet
   ;; Note: delay to cope with cyclic module imports at the top level.
   (delay
@@ -88,6 +184,9 @@
                                    "libnvidia-egl-gbm\\.so\\."
                                    ;; egl-wayland
                                    "libnvidia-egl-wayland\\.so\\."
+                                   ;; egl-x11
+                                   "libnvidia-egl-xcb\\.so\\."
+                                   "libnvidia-egl-xlib\\.so\\."
                                    ;; libglvnd
                                    "libEGL\\.so\\."
                                    "libGL\\.so\\."
@@ -265,14 +364,11 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
                  (lambda* (#:key inputs #:allow-other-keys)
                    ;; EGL external platform configuraiton
                    (substitute* '("10_nvidia_wayland.json"
-                                  "15_nvidia_gbm.json")
-                     (("libnvidia-egl-(wayland|gbm)\\.so\\.." all)
-                      (search-input-file inputs (string-append "lib/" all))))
-
-                   (substitute* '("20_nvidia_xcb.json"
+                                  "15_nvidia_gbm.json"
+                                  "20_nvidia_xcb.json"
                                   "20_nvidia_xlib.json")
-                     (("libnvidia-egl-(xcb|xlib)\\.so\\.." all)
-                      (string-append #$output "/lib/" all)))
+                     (("libnvidia-egl-(wayland|gbm|xcb|xlib)\\.so\\.." all)
+                      (search-input-file inputs (string-append "lib/" all))))
 
                    ;; EGL vendor ICD configuration
                    (substitute* "10_nvidia.json"
@@ -292,32 +388,32 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
 
                    ;; Add udev rules
                    (symlink #$%nvidia-udev-rules "90-nvidia.rules")))
-               (add-after 'install 'add-architecture-to-filename
-                 (lambda _
-                   (for-each
-                    (lambda (path)
-                      (let* ((out #$output)
-                             (system #$(or (%current-target-system)
-                                           (%current-system)))
-                             (dash (string-index system #\-))
-                             (arch (string-take system dash))
+               ; (add-after 'install 'add-architecture-to-filename
+               ;   (lambda _
+               ;     (for-each
+               ;      (lambda (path)
+               ;        (let* ((out #$output)
+               ;               (system #$(or (%current-target-system)
+               ;                             (%current-system)))
+               ;               (dash (string-index system #\-))
+               ;               (arch (string-take system dash))
 
-                             (dot  (string-index-right path #\.))
-                             (base (string-take path dot))
-                             (ext  (string-drop path (+ 1 dot))))
-                        ;; <...>/nvidia.icd -> <...>/nvidia.x86_64.icd
-                        ;; <...>/nvidia_icd.json -> <...>/nvidia_icd.x86_64.json
-                        (rename-file
-                         (string-append out path)
-                         (string-append out base "." arch "." ext))))
-                    '("/etc/OpenCL/vendors/nvidia.icd"
-                      "/share/egl/egl_external_platform.d/10_nvidia_wayland.json"
-                      "/share/egl/egl_external_platform.d/15_nvidia_gbm.json"
-                      "/share/egl/egl_external_platform.d/20_nvidia_xcb.json"
-                      "/share/egl/egl_external_platform.d/20_nvidia_xlib.json"
-                      "/share/glvnd/egl_vendor.d/10_nvidia.json"
-                      "/share/vulkan/icd.d/nvidia_icd.json"
-                      "/share/vulkan/implicit_layer.d/nvidia_layers.json"))))
+               ;               (dot  (string-index-right path #\.))
+               ;               (base (string-take path dot))
+               ;               (ext  (string-drop path (+ 1 dot))))
+               ;          ;; <...>/nvidia.icd -> <...>/nvidia.x86_64.icd
+               ;          ;; <...>/nvidia_icd.json -> <...>/nvidia_icd.x86_64.json
+               ;          (rename-file
+               ;           (string-append out path)
+               ;           (string-append out base "." arch "." ext))))
+               ;      '("/etc/OpenCL/vendors/nvidia.icd"
+               ;        "/share/egl/egl_external_platform.d/10_nvidia_wayland.json"
+               ;        "/share/egl/egl_external_platform.d/15_nvidia_gbm.json"
+               ;        "/share/egl/egl_external_platform.d/20_nvidia_xcb.json"
+               ;        "/share/egl/egl_external_platform.d/20_nvidia_xlib.json"
+               ;        "/share/glvnd/egl_vendor.d/10_nvidia.json"
+               ;        "/share/vulkan/icd.d/nvidia_icd.json"
+               ;        "/share/vulkan/implicit_layer.d/nvidia_layers.json"))))
                (add-after 'install 'patch-elf
                  (lambda* (#:key inputs #:allow-other-keys)
                    (let* ((ld.so (search-input-file
@@ -449,14 +545,15 @@ ACTION==\"unbind\", SUBSYSTEM==\"pci\", ATTR{vendor}==\"0x10de\", ATTR{class}==\
     (native-inputs (list patchelf-0.16))
     (inputs
      (list egl-gbm
-           egl-wayland
+           egl-wayland-for-nvda
+           egl-x11
            `(,gcc "lib")
            glibc
            libdrm
            libx11
            libxcb
            libxext
-           ; vulkan-headers
+           vulkan-headers
            mesa-for-nvda
            openssl
            openssl-1.1
