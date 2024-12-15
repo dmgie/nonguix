@@ -229,6 +229,10 @@ implementation with gogdl and Amazon Games using Nile.")
   (modify-inputs steam-container-libs
     (replace "mesa" nvda)))
 
+(define steam-nvidia-container-libs-beta
+  (modify-inputs steam-container-libs
+    (replace "mesa" nvdb)))
+
 (define heroic-extra-client-libs
   `(("curl" ,curl)                      ; Required for Heroic to download e.g. Wine.
     ("which" ,which)                    ; Heroic complains about trying to use which (though works).
@@ -253,8 +257,19 @@ implementation with gogdl and Amazon Games using Nile.")
                     #:name "fhs-union-32"
                     #:system "i686-linux"))))
 
+(define steam-nvidia-ld.so.conf-beta
+  (packages->ld.so.conf
+   (list (fhs-union steam-nvidia-container-libs-beta
+                    #:name "fhs-union-64")
+         (fhs-union steam-nvidia-container-libs-beta
+                    #:name "fhs-union-32"
+                    #:system "i686-linux"))))
+
 (define steam-nvidia-ld.so.cache
   (ld.so.conf->ld.so.cache steam-nvidia-ld.so.conf))
+
+(define steam-nvidia-ld.so.cache-beta
+  (ld.so.conf->ld.so.cache steam-nvidia-ld.so.conf-beta))
 
 (define-public steam-container
   (nonguix-container
@@ -293,8 +308,24 @@ all games will be installed.")))
                #:system "i686-linux"))
    (preserved-env %nvidia-environment-variable-regexps)))
 
+(define-public steam-nvidia-container-beta
+  (nonguix-container
+   (inherit steam-nvidia-container)
+   (name "steam-nvidia-beta")
+   ;; Steam's .desktop files expect a "steam" executable, so provide that.
+   (ld.so.conf steam-nvidia-ld.so.conf-beta)
+   (ld.so.cache steam-nvidia-ld.so.cache-beta)
+   (union64
+    (fhs-union steam-nvidia-container-libs-beta
+               #:name "fhs-union-64"))
+   (union32
+    (fhs-union steam-nvidia-container-libs-beta
+               #:name "fhs-union-32"
+               #:system "i686-linux"))))
+
 (define-public steam (nonguix-container->package steam-container))
 (define-public steam-nvidia (nonguix-container->package steam-nvidia-container))
+(define-public steam-nvidia-beta (nonguix-container->package steam-nvidia-container-beta))
 
 (define-public heroic-container
   (nonguix-container
