@@ -855,6 +855,9 @@ variables @code{__GLX_VENDOR_LIBRARY_NAME=nvidia} and
 (define-public replace-mesa
   (package-input-rewriting `((,mesa . ,mesa/fake))))
 
+(define-public replace-mesa-beta
+  (package-input-rewriting `((,mesa . ,mesa/fake-beta))))
+
 
 ;;;
 ;;; Other packages
