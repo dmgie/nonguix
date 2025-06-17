@@ -551,31 +551,42 @@ and update of GloriousEggroll's Proton-GE.")
     ("xdg-utils" ,xdg-utils) ; For Slay the Princess (and maybe renpy in general).
     ))
 
-(define lutris-fhs-union-64
-  (fhs-union `(,@lutris-client-libs-64
-               ,@lutris-gameruntime-libs
-               ,@fhs-min-libs)
-             #:name "fhs-union-64"))
-(define lutris-fhs-union-32
-  (fhs-union `(,@lutris-gameruntime-libs
-               ,@fhs-min-libs)
-             #:name "fhs-union-32"
-             #:system "i686-linux"))
-(define lutris-ld.so.conf
-  (packages->ld.so.conf (list lutris-fhs-union-64 lutris-fhs-union-32)))
-(define lutris-ld.so.cache
-  (ld.so.conf->ld.so.cache lutris-ld.so.conf))
+(define (lutris-fhs-union-64-for driver)
+  (fhs-union
+    (modify-inputs `(,@lutris-client-libs-64
+                     ,@lutris-gameruntime-libs
+                     ,@fhs-min-libs)
+      (replace "mesa" driver))
+    #:name "fhs-union-64"))
+(define (lutris-fhs-union-32-for driver)
+  (fhs-union
+    (modify-inputs `(,@lutris-gameruntime-libs
+                     ,@fhs-min-libs)
+      (replace "mesa" driver))
+    #:name "fhs-union-32"
+    #:system "i686-linux"))
+(define (lutris-ld.so.conf-for driver)
+  (packages->ld.so.conf
+    (list (lutris-fhs-union-64-for driver)
+          (lutris-fhs-union-32-for driver))))
+(define (lutris-ld.so.cache-for driver)
+  (ld.so.conf->ld.so.cache (lutris-ld.so.conf-for driver)))
 
-(define lutris-container
+(define (lutris-container-for driver)
   (nonguix-container (name "lutris-wrapped")
                      (wrap-package lutris)
                      (run "/bin/lutris")
-                     (ld.so.conf lutris-ld.so.conf)
-                     (ld.so.cache lutris-ld.so.cache)
-                     (union64 lutris-fhs-union-64)
-                     (union32 lutris-fhs-union-32)
+                     (ld.so.conf (lutris-ld.so.conf-for driver))
+                     (ld.so.cache (lutris-ld.so.cache-for driver))
+                     (union64 (lutris-fhs-union-64-for driver))
+                     (union32 (lutris-fhs-union-32-for driver))
+                     (preserved-env %nvidia-environment-variable-regexps)
                      (description
                       "Lutris is a game manager that can be used as a frontend for many sources of games")))
 
-(define-public lutris-wrapped
-  (nonguix-container->package lutris-container))
+(define-public (lutris-wrapped-for driver)
+  (nonguix-container->package (lutris-container-for driver)))
+
+(define-public lutris-wrapped (lutris-wrapped-for mesa))
+(define-public lutris-wrapped-nvidia
+  (package-with-alias "lutris-wrapped-nvidia" (lutris-wrapped-for nvda)))
