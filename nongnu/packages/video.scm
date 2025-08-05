@@ -80,7 +80,7 @@
 (define-public gmmlib
   (package
     (name "gmmlib")
-    (version "22.7.2")
+    (version "22.8.0")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -89,7 +89,7 @@
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0ijvcmg33mmhc4sr76qgwbiacpnzbja7lh9fnm0scf8vysydlnjd"))))
+                "0d52q2m0x4ys2w8b75q0hgn23q9474a5mj0xb6fmnw69a5gha5p6"))))
     (build-system cmake-build-system)
     (arguments
      ;; Tests are run as part of the normal build step
@@ -105,7 +105,7 @@ for VAAPI.")
 (define-public intel-media-driver
   (package
     (name "intel-media-driver")
-    (version "25.1.4")
+    (version "25.2.6")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -114,7 +114,7 @@ for VAAPI.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1c287qy8xnm4i6naflpvd83iz051ff3a348dpp75lna618wh24wi"))))
+                "1rp4s9a4x26p07w36ywql7qz7gyk15mgp9yrdx9j2b9qbmr1w1zs"))))
     (build-system cmake-build-system)
     (inputs (list libva gmmlib))
     (native-inputs (list pkg-config))
